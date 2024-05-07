@@ -1,7 +1,7 @@
 #ifndef CBE_REGISTER_H
 #define CBE_REGISTER_H
 
-#include "cbe_slice.h"
+#include "cbe_types.h"
 #include <stddef.h>
 
 enum cbe_register {

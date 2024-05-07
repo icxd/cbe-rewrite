@@ -2,21 +2,13 @@
 #define CBE_H
 
 #include "cbe_register.h"
-#include "cbe_slice.h"
+#include "cbe_types.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
-
-#define CBE_ARRAY_LEN(a) (sizeof(a) / sizeof(*a))
-
-#define CBE_PRINT_ERROR(fmt, ...)                                              \
-  do {                                                                         \
-    CBE_ERROR(fmt, __VA_ARGS__);                                               \
-    exit(1);                                                                   \
-  } while (0)
 
 typedef size_t cbe_symbol_id;
 typedef slice(const char *) cbe_symbol_table;

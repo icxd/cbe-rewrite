@@ -1,5 +1,15 @@
-#ifndef CBE_SLICE_H
-#define CBE_SLICE_H
+#ifndef CBE_TYPES_H
+#define CBE_TYPES_H
+
+#define CBE_ARRAY_LEN(a) (sizeof(a) / sizeof(*a))
+
+#define CBE_PRINT_ERROR(fmt, ...)                                              \
+  do {                                                                         \
+    CBE_ERROR(fmt, __VA_ARGS__);                                               \
+    exit(1);                                                                   \
+  } while (0)
+
+/* --------------- SLICES --------------- */
 
 #define slice(T)                                                               \
   struct {                                                                     \
@@ -51,4 +61,4 @@
     (s)->cap = (c);                                                            \
   } while (0)
 
-#endif // CBE_SLICE_H
+#endif // CBE_TYPES_H
