@@ -72,10 +72,10 @@ int main(void) {
       &context, "my_var1", false,
       cbe_build_typed_value(cbe_build_type_int(32),
                             cbe_build_value_integer(123)));
-  cbe_context_build_global_variable(
-      &context, "my_var2", false,
-      cbe_build_typed_value(cbe_build_type_unsigned_int(32),
-                            cbe_build_value_float(123.456)));
+  // cbe_context_build_global_variable(
+  //     &context, "my_var2", false,
+  //     cbe_build_typed_value(cbe_build_type_unsigned_int(32),
+  //                           cbe_build_value_float(123.456)));
   cbe_context_build_global_variable(
       &context, "my_var3", false,
       cbe_build_typed_value(cbe_build_type_unsigned_int(32),
@@ -88,6 +88,10 @@ int main(void) {
       &context, "my_var5", false,
       cbe_build_typed_value(cbe_build_type_int(32),
                             cbe_build_value_global(&context, "my_var1")));
+
+  cbe_context_build_function(&context, "main");
+  cbe_context_build_label(&context, "entry");
+  cbe_context_finish_current_function(&context);
 
   struct cbe_module module;
   cbe_module_init(&module, &context);

@@ -1,6 +1,7 @@
 #include "cbe.h"
 #include "cbe_log.h"
 #include "cbe_register.h"
+#include "cbe_types.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,10 +13,11 @@
 void cbe_context_init(struct cbe_context *context) {
   slice_init(&context->global_variables);
 
+  slice_init(&context->functions);
+  context->current_function_index = -1;
+
   slice_init(&context->symbol_table);
 
-  // TODO: Add the rest of the registers in here.
-  // NOTE: Doesn't have all of them cause of testing reasons.
   context->register_pool = (struct cbe_register_pool){
       0,
       {CBE_REG_EAX, CBE_REG_EBX, CBE_REG_ECX, CBE_REG_EDX, CBE_REG_ESI,
@@ -72,6 +74,33 @@ void cbe_context_build_global_variable(struct cbe_context *context,
                                              constant,
                                              value,
                                          });
+}
+
+void cbe_context_build_function(struct cbe_context *context, const char *name) {
+  CBE_ASSERT(context->current_function_index == -1);
+
+  struct cbe_function fn;
+  fn.name = name;
+  slice_init(&fn.instructions);
+  fn.ip = 0;
+  slice_init(&fn.labels);
+  // slice_init(&fn.locals);
+
+  slice_push(&context->functions, fn);
+  context->current_function_index = context->functions.size - 1;
+}
+
+void cbe_context_finish_current_function(struct cbe_context *context) {
+  CBE_ASSERT(context->current_function_index != -1);
+  context->current_function_index = -1;
+}
+
+size_t cbe_context_build_label(struct cbe_context *context, const char *label) {
+  CBE_ASSERT(context->current_function_index != -1);
+  slice_push(&context->functions.items[context->current_function_index].labels,
+             label);
+  return context->functions.items[context->current_function_index].labels.size -
+         1;
 }
 
 static void slice_c_array(void *arr, size_t elem_size, int start, int end) {
@@ -175,7 +204,7 @@ void cbe_module_generate_global_variable(struct cbe_module *module,
                                          struct cbe_global_variable variable) {
   char *value = cbe_module_generate_typed_value(module, variable.value);
   sprintf(variable.constant ? module->rodata : module->data,
-          "%sglobal__%ld: %s\n",
+          "%sglobal__%ld: dw %s\n",
           variable.constant ? module->rodata : module->data, variable.symbol_id,
           value);
   free(value);
@@ -196,8 +225,7 @@ char *cbe_module_generate_value(struct cbe_module *module,
     break;
 
   case CBE_VALUE_FLOATING:
-    sprintf(buffer, "%lf", value.floating);
-    break;
+    CBE_PRINT_ERROR("floating point values are not supported yet.");
 
   case CBE_VALUE_STRING:
     sprintf(buffer, "");
@@ -215,8 +243,7 @@ char *cbe_module_generate_value(struct cbe_module *module,
     break;
 
   default:
-    CBE_FATAL("not implemented");
-    exit(1);
+    CBE_PRINT_ERROR("not implemented");
   }
   return buffer;
 }

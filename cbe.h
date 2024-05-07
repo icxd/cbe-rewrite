@@ -51,7 +51,17 @@ struct cbe_typed_value {
   struct cbe_value value;
 };
 
-struct cbe_instruction {};
+enum cbe_instruction_tag {
+  CBE_INST_ADD,
+};
+struct cbe_instruction {
+  enum cbe_instruction_tag tag;
+  union {
+    struct {
+      struct cbe_typed_value left, right;
+    } add;
+  };
+};
 
 struct cbe_function {
   const char *name;
@@ -59,8 +69,8 @@ struct cbe_function {
   slice(struct cbe_instruction) instructions;
   size_t ip;
 
-  slice(size_t) labels;
-  slice(cbe_symbol_id) locals;
+  slice(const char *) labels;
+  // slice(cbe_symbol_id) locals;
 };
 
 struct cbe_global_variable {
@@ -71,6 +81,10 @@ struct cbe_global_variable {
 
 struct cbe_context {
   slice(struct cbe_global_variable) global_variables;
+
+  slice(struct cbe_function) functions;
+  // -1 means no function, meaning the global scope.
+  int current_function_index;
 
   cbe_symbol_table symbol_table;
 
@@ -99,6 +113,11 @@ cbe_symbol_id cbe_context_find_or_add_symbol(struct cbe_context *,
 
 void cbe_context_build_global_variable(struct cbe_context *, const char *, bool,
                                        struct cbe_typed_value);
+
+void cbe_context_build_function(struct cbe_context *, const char *);
+void cbe_context_finish_current_function(struct cbe_context *);
+
+size_t cbe_context_build_label(struct cbe_context *, const char *);
 
 enum cbe_register cbe_context_get_register(struct cbe_context *);
 void cbe_context_free_register(struct cbe_context *, enum cbe_register);

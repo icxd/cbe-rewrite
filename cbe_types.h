@@ -1,12 +1,22 @@
 #ifndef CBE_TYPES_H
 #define CBE_TYPES_H
 
+#define _CBE_STRINGIFY(x) #x
+#define CBE_STRINGIFY(x) _CBE_STRINGIFY(x)
+
 #define CBE_ARRAY_LEN(a) (sizeof(a) / sizeof(*a))
 
-#define CBE_PRINT_ERROR(fmt, ...)                                              \
+#define CBE_PRINT_ERROR(...)                                                   \
   do {                                                                         \
-    CBE_ERROR(fmt, __VA_ARGS__);                                               \
+    CBE_ERROR(__VA_ARGS__);                                                    \
     exit(1);                                                                   \
+  } while (0)
+
+#define CBE_ASSERT(cond)                                                       \
+  do {                                                                         \
+    if (!(cond)) {                                                             \
+      CBE_PRINT_ERROR("ASSERTION FAILED: %s", CBE_STRINGIFY(cond));            \
+    }                                                                          \
   } while (0)
 
 /* --------------- SLICES --------------- */
