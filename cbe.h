@@ -52,14 +52,19 @@ struct cbe_typed_value {
 };
 
 enum cbe_instruction_tag {
-  CBE_INST_ADD,
+#define INST(uppercase_name, ...) CBE_INST_##uppercase_name,
+#include "instructions.inc"
+#undef INST
 };
+
 struct cbe_instruction {
   enum cbe_instruction_tag tag;
+  int interval_index;
   union {
-    struct {
-      struct cbe_typed_value left, right;
-    } add;
+#define INST(uppercase_name, name, expects_temporary, ...)                     \
+  struct __VA_ARGS__ name;
+#include "instructions.inc"
+#undef INST
   };
 };
 
@@ -117,6 +122,19 @@ void cbe_context_build_global_variable(struct cbe_context *, const char *, bool,
 void cbe_context_build_function(struct cbe_context *, const char *);
 void cbe_context_finish_current_function(struct cbe_context *);
 
+void cbe_context_build_inst_add(struct cbe_context *, struct cbe_typed_value,
+                                struct cbe_typed_value);
+void cbe_context_build_inst_sub(struct cbe_context *, struct cbe_typed_value,
+                                struct cbe_typed_value);
+void cbe_context_build_inst_mul(struct cbe_context *, struct cbe_typed_value,
+                                struct cbe_typed_value);
+void cbe_context_build_inst_div(struct cbe_context *, struct cbe_typed_value,
+                                struct cbe_typed_value);
+void cbe_context_build_inst_mod(struct cbe_context *, struct cbe_typed_value,
+                                struct cbe_typed_value);
+void cbe_context_build_inst_rem(struct cbe_context *, struct cbe_typed_value,
+                                struct cbe_typed_value);
+
 size_t cbe_context_build_label(struct cbe_context *, const char *);
 
 enum cbe_register cbe_context_get_register(struct cbe_context *);
@@ -137,6 +155,11 @@ void cbe_module_generate(struct cbe_module *);
 
 void cbe_module_generate_global_variable(struct cbe_module *,
                                          struct cbe_global_variable);
+
+void cbe_module_generate_function(struct cbe_module *, struct cbe_function);
+void cbe_module_generate_label(struct cbe_module *);
+void cbe_module_generate_instruction(struct cbe_module *,
+                                     struct cbe_instruction);
 
 char *cbe_module_generate_typed_value(struct cbe_module *,
                                       struct cbe_typed_value);
@@ -159,5 +182,8 @@ struct cbe_value cbe_build_value_string(const char *);
 struct cbe_value cbe_build_value_character(char);
 struct cbe_value cbe_build_value_local(struct cbe_context *, const char *);
 struct cbe_value cbe_build_value_global(struct cbe_context *, const char *);
+
+const char *cbe_get_instruction_name(struct cbe_instruction);
+bool cbe_instruction_expects_temporary(struct cbe_instruction);
 
 #endif // CBE_H

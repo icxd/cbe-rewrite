@@ -95,6 +95,60 @@ void cbe_context_finish_current_function(struct cbe_context *context) {
   context->current_function_index = -1;
 }
 
+void cbe_context_build_inst_add(struct cbe_context *context,
+                                struct cbe_typed_value left,
+                                struct cbe_typed_value right) {
+  slice_push(
+      &context->functions.items[context->current_function_index].instructions,
+      (struct cbe_instruction){
+          .tag = CBE_INST_ADD, .interval_index = 0, .add = {left, right}});
+}
+
+void cbe_context_build_inst_sub(struct cbe_context *context,
+                                struct cbe_typed_value left,
+                                struct cbe_typed_value right) {
+  slice_push(
+      &context->functions.items[context->current_function_index].instructions,
+      (struct cbe_instruction){
+          .tag = CBE_INST_SUB, .interval_index = 0, .sub = {left, right}});
+}
+
+void cbe_context_build_inst_mul(struct cbe_context *context,
+                                struct cbe_typed_value left,
+                                struct cbe_typed_value right) {
+  slice_push(
+      &context->functions.items[context->current_function_index].instructions,
+      (struct cbe_instruction){
+          .tag = CBE_INST_MUL, .interval_index = 0, .mul = {left, right}});
+}
+
+void cbe_context_build_inst_div(struct cbe_context *context,
+                                struct cbe_typed_value left,
+                                struct cbe_typed_value right) {
+  slice_push(
+      &context->functions.items[context->current_function_index].instructions,
+      (struct cbe_instruction){
+          .tag = CBE_INST_DIV, .interval_index = 0, .div = {left, right}});
+}
+
+void cbe_context_build_inst_mod(struct cbe_context *context,
+                                struct cbe_typed_value left,
+                                struct cbe_typed_value right) {
+  slice_push(
+      &context->functions.items[context->current_function_index].instructions,
+      (struct cbe_instruction){
+          .tag = CBE_INST_MOD, .interval_index = 0, .mod = {left, right}});
+}
+
+void cbe_context_build_inst_rem(struct cbe_context *context,
+                                struct cbe_typed_value left,
+                                struct cbe_typed_value right) {
+  slice_push(
+      &context->functions.items[context->current_function_index].instructions,
+      (struct cbe_instruction){
+          .tag = CBE_INST_REM, .interval_index = 0, .rem = {left, right}});
+}
+
 size_t cbe_context_build_label(struct cbe_context *context, const char *label) {
   CBE_ASSERT(context->current_function_index != -1);
   slice_push(&context->functions.items[context->current_function_index].labels,
@@ -195,8 +249,14 @@ void cbe_module_free(struct cbe_module *module) {
 
 void cbe_module_generate(struct cbe_module *module) {
   for (size_t i = 0; i < module->context->global_variables.size; i++) {
-    cbe_module_generate_global_variable(
-        module, module->context->global_variables.items[i]);
+    struct cbe_global_variable variable =
+        module->context->global_variables.items[i];
+    cbe_module_generate_global_variable(module, variable);
+  }
+
+  for (size_t i = 0; i < module->context->functions.size; i++) {
+    struct cbe_function function = module->context->functions.items[i];
+    cbe_module_generate_function(module, function);
   }
 }
 
@@ -208,6 +268,56 @@ void cbe_module_generate_global_variable(struct cbe_module *module,
           variable.constant ? module->rodata : module->data, variable.symbol_id,
           value);
   free(value);
+}
+
+void cbe_module_generate_function(struct cbe_module *module,
+                                  struct cbe_function function) {
+  sprintf(module->text, "%s:\n", function.name);
+  for (; function.ip < function.instructions.size;) {
+    struct cbe_instruction instruction =
+        function.instructions.items[function.ip++];
+    cbe_module_generate_instruction(module, instruction);
+  }
+}
+
+void cbe_module_generate_label(struct cbe_module *module);
+
+void cbe_module_generate_instruction(struct cbe_module *module,
+                                     struct cbe_instruction instruction) {
+  if (cbe_instruction_expects_temporary(instruction)) {
+    struct cbe_function function =
+        module->context->functions
+            .items[module->context->current_function_index];
+    enum cbe_register reg = cbe_context_get_register(module->context);
+    struct cbe_live_interval interval = {
+        .symbol = {.name = _CBE_STRINGIFY(function.ip),
+                   .reg = reg,
+                   .location = -1},
+        .location = -1,
+        .start_point = (int)function.ip,
+        .end_point = (int)function.ip + 1};
+    slice_push(&module->context->live_intervals, interval);
+    instruction.interval_index = module->context->live_intervals.size - 1;
+  }
+  switch (instruction.tag) {
+  case CBE_INST_ADD: {
+    // mov eax, <left>
+    // add eax, <right>
+    const char *reg = cbe_get_register_name(
+        module->context->live_intervals.items[instruction.interval_index]
+            .symbol.reg);
+    char *left = cbe_module_generate_typed_value(module, instruction.add.left);
+    char *right =
+        cbe_module_generate_typed_value(module, instruction.add.right);
+    sprintf(module->text, "%s  mov %s, %s\n", module->text, reg, left);
+    sprintf(module->text, "%s  add %s, %s\n", module->text, reg, right);
+    free(left);
+    free(right);
+  } break;
+  default:
+    CBE_PRINT_ERROR("%s instruction is not implemented yet",
+                    cbe_get_instruction_name(instruction));
+  }
 }
 
 char *cbe_module_generate_typed_value(struct cbe_module *module,
@@ -315,4 +425,22 @@ struct cbe_value cbe_build_value_global(struct cbe_context *context,
       .tag = CBE_VALUE_GLOBAL,
       .global = cbe_context_find_or_add_symbol(context, value),
   };
+}
+
+const char *cbe_get_instruction_name(struct cbe_instruction instruction) {
+  const char *names[] = {
+#define INST(a, b, ...) #b,
+#include "instructions.inc"
+#undef INST
+  };
+  return names[instruction.tag];
+}
+
+bool cbe_instruction_expects_temporary(struct cbe_instruction instruction) {
+  bool things[] = {
+#define INST(a, b, c, ...) c,
+#include "instructions.inc"
+#undef INST
+  };
+  return things[instruction.tag];
 }

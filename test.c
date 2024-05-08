@@ -6,37 +6,72 @@ int main(void) {
   struct cbe_context context;
   cbe_context_init(&context);
 
+  cbe_context_build_global_variable(
+      &context, "my_var1", false,
+      cbe_build_typed_value(cbe_build_type_int(32),
+                            cbe_build_value_integer(123)));
+  // cbe_context_build_global_variable(
+  //     &context, "my_var2", false,
+  //     cbe_build_typed_value(cbe_build_type_unsigned_int(32),
+  //                           cbe_build_value_float(123.456)));
+  cbe_context_build_global_variable(
+      &context, "my_var3", false,
+      cbe_build_typed_value(cbe_build_type_unsigned_int(32),
+                            cbe_build_value_string("this is a test")));
+  cbe_context_build_global_variable(
+      &context, "my_var4", false,
+      cbe_build_typed_value(cbe_build_type_unsigned_int(32),
+                            cbe_build_value_character('a')));
+  cbe_context_build_global_variable(
+      &context, "my_var5", false,
+      cbe_build_typed_value(cbe_build_type_int(32),
+                            cbe_build_value_global(&context, "my_var1")));
+
+  cbe_context_build_function(&context, "main");
+
+  cbe_context_build_label(&context, "entry");
+
+  cbe_context_build_inst_add(
+      &context,
+      cbe_build_typed_value(cbe_build_type_int(32),
+                            cbe_build_value_integer(50)),
+      cbe_build_typed_value(cbe_build_type_int(32),
+                            cbe_build_value_integer(100)));
+
+  cbe_context_finish_current_function(&context);
+
+  struct cbe_module module;
+  cbe_module_init(&module, &context);
+
+  cbe_module_generate(&module);
+  cbe_module_output_to_file(&module, stdout);
+
   {
-    slice_push(&context.live_intervals,
-               (struct cbe_live_interval){
-                   .symbol = {.name = "a", .reg = CBE_REG_NONE, .location = -1},
-                   .start_point = 1,
-                   .end_point = 4,
-               });
-    slice_push(&context.live_intervals,
-               (struct cbe_live_interval){
-                   .symbol = {.name = "b", .reg = CBE_REG_NONE, .location = -1},
-                   .start_point = 2,
-                   .end_point = 6,
-               });
-    slice_push(&context.live_intervals,
-               (struct cbe_live_interval){
-                   .symbol = {.name = "c", .reg = CBE_REG_NONE, .location = -1},
-                   .start_point = 3,
-                   .end_point = 10,
-               });
-    slice_push(&context.live_intervals,
-               (struct cbe_live_interval){
-                   .symbol = {.name = "d", .reg = CBE_REG_NONE, .location = -1},
-                   .start_point = 5,
-                   .end_point = 9,
-               });
-    slice_push(&context.live_intervals,
-               (struct cbe_live_interval){
-                   .symbol = {.name = "e", .reg = CBE_REG_NONE, .location = -1},
-                   .start_point = 7,
-                   .end_point = 8,
-               });
+    //     slice_push(&context.live_intervals,
+    //                (struct cbe_live_interval){
+    //                    .symbol = {.name = "a", .reg = CBE_REG_NONE, .location
+    //                    = -1}, .start_point = 1, .end_point = 4,
+    //                });
+    //     slice_push(&context.live_intervals,
+    //                (struct cbe_live_interval){
+    //                    .symbol = {.name = "b", .reg = CBE_REG_NONE, .location
+    //                    = -1}, .start_point = 2, .end_point = 6,
+    //                });
+    //     slice_push(&context.live_intervals,
+    //                (struct cbe_live_interval){
+    //                    .symbol = {.name = "c", .reg = CBE_REG_NONE, .location
+    //                    = -1}, .start_point = 3, .end_point = 10,
+    //                });
+    //     slice_push(&context.live_intervals,
+    //                (struct cbe_live_interval){
+    //                    .symbol = {.name = "d", .reg = CBE_REG_NONE, .location
+    //                    = -1}, .start_point = 5, .end_point = 9,
+    //                });
+    //     slice_push(&context.live_intervals,
+    //                (struct cbe_live_interval){
+    //                    .symbol = {.name = "e", .reg = CBE_REG_NONE, .location
+    //                    = -1}, .start_point = 7, .end_point = 8,
+    //                });
 
     for (size_t i = 0; i < context.live_intervals.size; i++) {
       struct cbe_live_interval interval = context.live_intervals.items[i];
@@ -67,37 +102,6 @@ int main(void) {
                interval.symbol.location);
     }
   }
-
-  cbe_context_build_global_variable(
-      &context, "my_var1", false,
-      cbe_build_typed_value(cbe_build_type_int(32),
-                            cbe_build_value_integer(123)));
-  // cbe_context_build_global_variable(
-  //     &context, "my_var2", false,
-  //     cbe_build_typed_value(cbe_build_type_unsigned_int(32),
-  //                           cbe_build_value_float(123.456)));
-  cbe_context_build_global_variable(
-      &context, "my_var3", false,
-      cbe_build_typed_value(cbe_build_type_unsigned_int(32),
-                            cbe_build_value_string("this is a test")));
-  cbe_context_build_global_variable(
-      &context, "my_var4", false,
-      cbe_build_typed_value(cbe_build_type_unsigned_int(32),
-                            cbe_build_value_character('a')));
-  cbe_context_build_global_variable(
-      &context, "my_var5", false,
-      cbe_build_typed_value(cbe_build_type_int(32),
-                            cbe_build_value_global(&context, "my_var1")));
-
-  cbe_context_build_function(&context, "main");
-  cbe_context_build_label(&context, "entry");
-  cbe_context_finish_current_function(&context);
-
-  struct cbe_module module;
-  cbe_module_init(&module, &context);
-
-  cbe_module_generate(&module);
-  cbe_module_output_to_file(&module, stdout);
 
   cbe_module_free(&module);
   cbe_context_free(&context);
